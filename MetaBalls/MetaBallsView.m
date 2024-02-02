@@ -66,7 +66,9 @@ typedef struct {
 
 - (void)drawInMTKView:(nonnull MTKView *)view {
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    id<MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:view.currentRenderPassDescriptor];
+    
+    MTLRenderPassDescriptor* descriptor = view.currentRenderPassDescriptor;
+    id<MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:descriptor];
     
     
     //     encoding commands
@@ -79,7 +81,7 @@ typedef struct {
     [commandEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:_indexCount indexType:MTLIndexTypeUInt16 indexBuffer:_indexBuffer indexBufferOffset:0];
     [commandEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
 
-//     committing the drawing
+    //  committing the drawing
     [commandEncoder endEncoding];
     [commandBuffer presentDrawable:view.currentDrawable];
     [commandBuffer commit];
@@ -97,7 +99,7 @@ typedef struct {
 
 // METAL SETUP:
 
-
+// Helpers:
 _Nullable id<MTLLibrary> MSSNewDefaultBundleLibrary(const id<MTLDevice> device)
 {
     NSBundle *bundle = [NSBundle bundleWithIdentifier:@"phitch.MetaBalls"];
@@ -123,7 +125,7 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
     return renderState;
 }
 
-
+// Real init:
 - (bool)initMetal {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
     if (!device) {
