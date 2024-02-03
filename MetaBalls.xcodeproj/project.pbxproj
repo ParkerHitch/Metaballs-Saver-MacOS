@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6866AC632B6D78B800D7BC08 /* MetaBallConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 6866AC622B6D78B800D7BC08 /* MetaBallConstants.h */; };
 		68A8DC862A0C7B6500551EAF /* MetaBallsView.h in Headers */ = {isa = PBXBuildFile; fileRef = 68A8DC852A0C7B6500551EAF /* MetaBallsView.h */; };
 		68A8DC882A0C7B6500551EAF /* MetaBallsView.m in Sources */ = {isa = PBXBuildFile; fileRef = 68A8DC872A0C7B6500551EAF /* MetaBallsView.m */; };
 		68A8DC8F2A0CA33000551EAF /* shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 68A8DC8E2A0CA33000551EAF /* shaders.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6866AC622B6D78B800D7BC08 /* MetaBallConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetaBallConstants.h; sourceTree = "<group>"; };
 		68A8DC822A0C7B6500551EAF /* MetaBalls.saver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetaBalls.saver; sourceTree = BUILT_PRODUCTS_DIR; };
 		68A8DC852A0C7B6500551EAF /* MetaBallsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetaBallsView.h; sourceTree = "<group>"; };
 		68A8DC872A0C7B6500551EAF /* MetaBallsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetaBallsView.m; sourceTree = "<group>"; };
@@ -49,6 +51,7 @@
 		68A8DC842A0C7B6500551EAF /* MetaBalls */ = {
 			isa = PBXGroup;
 			children = (
+				6866AC622B6D78B800D7BC08 /* MetaBallConstants.h */,
 				68A8DC852A0C7B6500551EAF /* MetaBallsView.h */,
 				68A8DC872A0C7B6500551EAF /* MetaBallsView.m */,
 				68A8DC8E2A0CA33000551EAF /* shaders.metal */,
@@ -63,6 +66,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6866AC632B6D78B800D7BC08 /* MetaBallConstants.h in Headers */,
 				68A8DC862A0C7B6500551EAF /* MetaBallsView.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
