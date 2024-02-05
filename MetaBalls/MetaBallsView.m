@@ -26,10 +26,15 @@ float magnitude(vector_float2 vec){
     MTLRenderPassDescriptor* _renderToDistTexRPassDescriptor;
     id<MTLRenderPipelineState> _renderToDistTexRPipeline;
     
-    id<MTLRenderPipelineState> _drawMarchingCubesRPipeline;
+    id<MTLTexture> _rawBallTexture;
+    MTLRenderPassDescriptor* _rawBallTexRPassDescriptor;
+    id<MTLRenderPipelineState> _rawBallTexRPipeline;
+    
+    id<MTLRenderPipelineState> _drawFinalRPipeline;
     
     float _aspectRatio;
     vector_float2 _winSize;
+    vector_float2 _renderSize;
     
     vector_float2 bPositions[MTABLS_NUM_BALLS];
     float bSizes[MTABLS_NUM_BALLS];
@@ -53,6 +58,7 @@ float magnitude(vector_float2 vec){
     _aspectRatio = frame.size.width / frame.size.height;
     _winSize.x = frame.size.width;
     _winSize.y = frame.size.height;
+    _renderSize = _winSize*MTABLS_RENDER_SCALE;
     
     srand(time(NULL));
     for(int i=0; i < MTABLS_NUM_BALLS; i++){
@@ -160,12 +166,10 @@ float magnitude(vector_float2 vec){
         [renderEncoder setVertexBytes:&cornerVerts
                                length:sizeof(cornerVerts)
                               atIndex:MTABLS_VERTEX_IN__VERTECIES];
-//        [renderEncoder setVertexBytes:&_aspectRatio
-//                               length:sizeof(_aspectRatio)
-//                              atIndex:MTABLS_VERTEX_IN__ASPECT];
         [renderEncoder setVertexBytes:&_winSize
                                length:sizeof(_winSize)
                               atIndex:MTABLS_VERTEX_IN__SCREENWIDTH];
+        
         [renderEncoder setFragmentBytes:&bPositions
                                  length:sizeof(bPositions)
                                 atIndex:MTABLS_DIST_FRAGMENT_IN__B_POS];
@@ -181,24 +185,19 @@ float magnitude(vector_float2 vec){
         [renderEncoder endEncoding];
     }
     
-    MTLRenderPassDescriptor *drawableRenderPassDescriptor = view.currentRenderPassDescriptor;
-    // Que commands for drawing to screen:
+    
+    // Que commands for computing marching cubes.
     {
-        id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:drawableRenderPassDescriptor];
+        id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_rawBallTexRPassDescriptor];
         renderEncoder.label = @"Marching Cubes Render Pass";
-        
-        [renderEncoder setRenderPipelineState:_drawMarchingCubesRPipeline];
+        [renderEncoder setRenderPipelineState:_rawBallTexRPipeline];
         
         [renderEncoder setVertexBytes:&cornerRealTho
                                length:sizeof(cornerRealTho)
                               atIndex:MTABLS_VERTEX_IN__VERTECIES];
-//        [renderEncoder setVertexBytes:&_aspectRatio
-//                               length:sizeof(_aspectRatio)
-//                              atIndex:MTABLS_VERTEX_IN__ASPECT];
-
         
         [renderEncoder setFragmentTexture:_distTexture atIndex:MTABLS_DIST_TEXTURE_IND];
-        [renderEncoder setFragmentBytes:&_winSize
+        [renderEncoder setFragmentBytes:&_renderSize
                                length:sizeof(_winSize)
                               atIndex:MTABLS_VERTEX_IN__SCREENWIDTH];
         
@@ -209,6 +208,28 @@ float magnitude(vector_float2 vec){
         [renderEncoder endEncoding];
     }
     
+    MTLRenderPassDescriptor *drawableRenderPassDescriptor = view.currentRenderPassDescriptor;
+    {
+        id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:drawableRenderPassDescriptor];
+        renderEncoder.label = @"Final Output Render Pass";
+        
+        [renderEncoder setRenderPipelineState:_drawFinalRPipeline];
+        
+        [renderEncoder setVertexBytes:&cornerVerts
+                               length:sizeof(cornerVerts)
+                              atIndex:MTABLS_VERTEX_IN__VERTECIES];
+        
+        [renderEncoder setFragmentTexture:_rawBallTexture atIndex:MTABLS_DIST_TEXTURE_IND];
+        [renderEncoder setFragmentBytes:&_winSize
+                               length:sizeof(_winSize)
+                              atIndex:MTABLS_VERTEX_IN__SCREENWIDTH];
+        
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                          vertexStart:0
+                          vertexCount:6];
+
+        [renderEncoder endEncoding];
+    }
     
     //  committing the drawing
     [commandBuffer presentDrawable:view.currentDrawable];
@@ -226,6 +247,7 @@ float magnitude(vector_float2 vec){
     
     _winSize.x = size.width;
     _winSize.y = size.height;
+    _renderSize = _winSize * MTABLS_RENDER_SCALE;
     
     [_mtkview setFrameSize:size];
 }
@@ -277,10 +299,11 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
     _commandQueue = [device newCommandQueue];
     _library = MSSNewDefaultBundleLibrary(device);
     
+    // Pipeline to calculate distance to each ball on a per-pixel basis and save to a texturue.
     
     MTLTextureDescriptor* distTexDescriptor = [MTLTextureDescriptor new];
-    distTexDescriptor.width  = self.frame.size.width  + 1;
-    distTexDescriptor.height = self.frame.size.height + 1;
+    distTexDescriptor.width  = self.frame.size.width*MTABLS_RENDER_SCALE  + 1;
+    distTexDescriptor.height = self.frame.size.height*MTABLS_RENDER_SCALE + 1;
     distTexDescriptor.pixelFormat = MTLPixelFormatR16Float;
     distTexDescriptor.usage = MTLTextureUsageRenderTarget |
                           MTLTextureUsageShaderRead;
@@ -288,12 +311,9 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
     _distTexture = [device newTextureWithDescriptor:distTexDescriptor];
     
     _renderToDistTexRPassDescriptor = [MTLRenderPassDescriptor new];
-    
     _renderToDistTexRPassDescriptor.colorAttachments[0].texture = _distTexture;
-    
     _renderToDistTexRPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
     _renderToDistTexRPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,1);
-
     _renderToDistTexRPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
     
     // Pipeline to draw distance to balls to the textrue
@@ -307,17 +327,43 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
     _renderToDistTexRPipeline = [device newRenderPipelineStateWithDescriptor:distTexPipelineStateDescriptor error:&error];
     NSAssert(_renderToDistTexRPipeline,  @"Failed to create pipeline state to render to distance texture: %@", error);
     
-    // Pipline to render the distance to ball texture to the screen.
-    // Will perform marching cubes
+    // Pipline to perform marching cubes, rendering an un-anti-aliased image to a texture
+    
+    MTLTextureDescriptor* rawBallTexDescriptor = [MTLTextureDescriptor new];
+    rawBallTexDescriptor.width  = self.frame.size.width*MTABLS_RENDER_SCALE;
+    rawBallTexDescriptor.height = self.frame.size.height*MTABLS_RENDER_SCALE;
+    rawBallTexDescriptor.pixelFormat = MTLPixelFormatRGBA16Float;
+    rawBallTexDescriptor.usage = MTLTextureUsageRenderTarget |
+                          MTLTextureUsageShaderRead;
+    _rawBallTexture = [device newTextureWithDescriptor:rawBallTexDescriptor];
+    
+    _rawBallTexRPassDescriptor = [MTLRenderPassDescriptor new];
+    _rawBallTexRPassDescriptor.colorAttachments[0].texture = _rawBallTexture;
+    _rawBallTexRPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    _rawBallTexRPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,1);
+    _rawBallTexRPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    
     MTLRenderPipelineDescriptor *marchingCubesPipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     marchingCubesPipelineStateDescriptor.label = @"Marching Cubes Render Pipeline";
-    marchingCubesPipelineStateDescriptor.sampleCount = _mtkview.sampleCount;
+    marchingCubesPipelineStateDescriptor.sampleCount = 1;
     marchingCubesPipelineStateDescriptor.vertexFunction = [_library newFunctionWithName:@"marchingCubesVertexShader"];
     marchingCubesPipelineStateDescriptor.fragmentFunction = [_library newFunctionWithName:@"marchingCubesFragmentShader"];
-    marchingCubesPipelineStateDescriptor.colorAttachments[0].pixelFormat = _mtkview.colorPixelFormat;
+    marchingCubesPipelineStateDescriptor.colorAttachments[0].pixelFormat = _rawBallTexture.pixelFormat;
     
-    _drawMarchingCubesRPipeline = [device newRenderPipelineStateWithDescriptor:marchingCubesPipelineStateDescriptor error:&error];
-    NSAssert(_drawMarchingCubesRPipeline, @"Failed to create pipeline state to render to screen: %@", error);
+    _rawBallTexRPipeline = [device newRenderPipelineStateWithDescriptor:marchingCubesPipelineStateDescriptor error:&error];
+    NSAssert(_rawBallTexRPipeline, @"Failed to create pipeline state to perform marching cubes: %@", error);
+    
+    // Pipline to render marched cubes to screen and to anti-alias.
+    
+    MTLRenderPipelineDescriptor *finalRenderPipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+    finalRenderPipelineStateDescriptor.label = @"Final Drawing Render Pipeline";
+    finalRenderPipelineStateDescriptor.sampleCount = _mtkview.sampleCount;
+    finalRenderPipelineStateDescriptor.vertexFunction = [_library newFunctionWithName:@"finalVertexShader"];
+    finalRenderPipelineStateDescriptor.fragmentFunction = [_library newFunctionWithName:@"finalFragmentShader"];
+    finalRenderPipelineStateDescriptor.colorAttachments[0].pixelFormat = _mtkview.colorPixelFormat;
+    
+    _drawFinalRPipeline = [device newRenderPipelineStateWithDescriptor:finalRenderPipelineStateDescriptor error:&error];
+    NSAssert(_rawBallTexRPipeline, @"Failed to create pipeline state for final render: %@", error);
     
     return true;
 }
