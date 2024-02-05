@@ -40,7 +40,7 @@ float magnitude(vector_float2 vec){
     float bSizes[MTABLS_NUM_BALLS];
     vector_float2 bVels[MTABLS_NUM_BALLS];
     float bVelIdeal[MTABLS_NUM_BALLS];
-    
+    vector_float2 bAccel[MTABLS_NUM_BALLS];
 }
 
 - (instancetype)initWithFrame:(NSRect)frame isPreview:(BOOL)isPreview
@@ -71,6 +71,7 @@ float magnitude(vector_float2 vec){
         bVelIdeal[i] = velMag;
         bVels[i].x = velMag * cosf(theta);
         bVels[i].y = velMag * sinf(theta);
+        bAccel[i] = 0;
     }
     
     return self;
@@ -100,22 +101,35 @@ float magnitude(vector_float2 vec){
         
         bool wall = false;
         
+        bAccel[i].x = 0;
+        bAccel[i].y = 0;
+        
         if(bPositions[i].x > _winSize.x - bSizes[i]){
             wall = true;
-            bVels[i].x -= MTABLS_EDGE_HARDNESS * powf((_winSize.x - bSizes[i] - bPositions[i].x), 2);
+            float accel = MTABLS_EDGE_HARDNESS * powf((_winSize.x - bSizes[i] - bPositions[i].x), 2);
+            bVels[i].x -= accel;
+            bAccel[i].x = accel;
         }
         else if(bPositions[i].x < bSizes[i]){
             wall = true;
-            bVels[i].x += MTABLS_EDGE_HARDNESS * powf((bPositions[i].x - bSizes[i] ), 2);
+            float accel = MTABLS_EDGE_HARDNESS * powf((bPositions[i].x - bSizes[i] ), 2);
+            bVels[i].x += accel;
+            bAccel[i].x = accel;
         }
         if(bPositions[i].y > _winSize.y - bSizes[i]){
             wall = true;
-            bVels[i].y -= MTABLS_EDGE_HARDNESS * powf((_winSize.y - bSizes[i]  - bPositions[i].y), 2);
+            float accel = MTABLS_EDGE_HARDNESS * powf((_winSize.y - bSizes[i]  - bPositions[i].y), 2);
+            bVels[i].y -= accel;
+            bAccel[i].y = accel;
         }
         else if(bPositions[i].y < bSizes[i]){
             wall = true;
-            bVels[i].y += MTABLS_EDGE_HARDNESS * powf((bPositions[i].y - bSizes[i] ), 2);
+            float accel = MTABLS_EDGE_HARDNESS * powf((bPositions[i].y - bSizes[i] ), 2);
+            bVels[i].y += accel;
+            bAccel[i].y = accel;
         }
+        
+        bAccel[i] /= MTABLS_BALL_SIZE*_winSize.x;
         
         if(!wall){
             float error = bVelIdeal[i] - magnitude(bVels[i]);
@@ -176,6 +190,9 @@ float magnitude(vector_float2 vec){
         [renderEncoder setFragmentBytes:&bSizes
                                  length:sizeof(bSizes)
                                 atIndex:MTABLS_DIST_FRAGMENT_IN__B_SIZE];
+        [renderEncoder setFragmentBytes:&bAccel
+                                 length:sizeof(bAccel)
+                                atIndex:MTABLS_DIST_FRAGMENT_IN__B_ACCEL];
         
         // Render triangles
         [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle

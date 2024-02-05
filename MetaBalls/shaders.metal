@@ -36,13 +36,19 @@ vertex Vertex ballDistVertexShader(uint vid [[vertex_id]], constant float2 *vert
 
 fragment float4 ballDistFragmentShader(Vertex vert[[stage_in]],
                                        constant float2* ballPositions [[buffer(MTABLS_DIST_FRAGMENT_IN__B_POS)]],
-                                       constant float*  ballSizes [[buffer(MTABLS_DIST_FRAGMENT_IN__B_SIZE)]]) {
+                                       constant float*  ballSizes [[buffer(MTABLS_DIST_FRAGMENT_IN__B_SIZE)]],
+                                       constant float2* ballAccels [[buffer(MTABLS_DIST_FRAGMENT_IN__B_ACCEL)]]) {
     
     float sum = 0;
     float r;
+    float2 rVec;
     
     for(int i=0; i<MTABLS_NUM_BALLS; i++){
-        r = distance(vert.realPos.xy, ballPositions[i]);
+        rVec = vert.realPos.xy - ballPositions[i];
+        //r = distance(vert.realPos.xy, ballPositions[i]);
+        rVec.x /= 1 - ballAccels[i].x;
+        rVec.y /= 1 - ballAccels[i].y;
+        r = distance(rVec, float2(0,0));
         if(r > ballSizes[i]){
             continue;
         } else {
