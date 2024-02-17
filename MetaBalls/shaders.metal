@@ -15,7 +15,7 @@ struct Vertex {
     float2 realPos;
 };
 
-struct MarchingVertexRasterized {
+struct ColorVertex {
     float4 position [[position]];
     float4 color;
     float2 texCoord;
@@ -62,28 +62,28 @@ fragment float4 ballDistFragmentShader(Vertex vert[[stage_in]],
     return vector_float4(sum, sum, sum, 1.0);
 }
 
-vertex MarchingVertexRasterized marchingCubesVertexShader(uint vid [[vertex_id]],
-                                                          constant MarchingVertex* vertices [[buffer(MTABLS_VERTEX_IN__VERTECIES)]]) {
+vertex Vertex marchingCubesVertexShader(uint vid [[vertex_id]],
+                                        constant float2* vertices [[buffer(MTABLS_VERTEX_IN__VERTECIES)]]) {
 
-    MarchingVertexRasterized out;
+    Vertex out;
     
     out.position = vector_float4(0.0, 0.0, 0.0, 1.0);
-    out.position.xy = vertices[vid].position;
+    out.position.xy = vertices[vid];
 
-    out.texCoord = out.position.xy;
+    out.realPos = out.position.xy;
     
-    out.color = vertices[vid].color;
+//    out.color = vertices[vid].color;
     
     return out;
 }
 
 
-fragment float4 marchingCubesFragmentShader(MarchingVertexRasterized vert [[stage_in]],
+fragment float4 marchingCubesFragmentShader(Vertex vert [[stage_in]],
                                             texture2d<float> texture [[texture(MTABLS_DIST_TEXTURE_IND)]],
                                             constant float2& screenSize [[buffer(MTABLS_VERTEX_IN__SCREENWIDTH)]] ){
     
     sampler simpleSampler;
-    float2 baseCoord = (vert.texCoord+1) / 2;
+    float2 baseCoord = (vert.realPos+1) / 2;
     
     float2 pixelCoord = baseCoord * screenSize;
     
@@ -111,22 +111,24 @@ fragment float4 marchingCubesFragmentShader(MarchingVertexRasterized vert [[stag
         multiplier = 1;
     }
     
-    realColor.rgb = vert.color.rgb * multiplier;
+//    realColor.rgb = vert.color.rgb * multiplier;
     
-    return realColor;
+    return vector_float4(multiplier, multiplier, multiplier, 1.0);
 }
 
 
-vertex Vertex finalVertexShader(uint vid [[vertex_id]],
-                                constant float2* vertices [[buffer(MTABLS_VERTEX_IN__VERTECIES)]]) {
+vertex ColorVertex finalVertexShader(uint vid [[vertex_id]],
+                                constant MarchingVertex* vertices [[buffer(MTABLS_VERTEX_IN__VERTECIES)]]) {
 
-    Vertex out;
+    ColorVertex out;
     
     out.position = vector_float4(0.0, 0.0, 0.0, 1.0);
-    out.position.xy = vertices[vid];
+    out.position.xy = vertices[vid].position;
 
-    out.realPos = (out.position.xy+1) / 2;
-    out.realPos.y = 1 - out.realPos.y;
+    out.texCoord = (out.position.xy+1) / 2;
+    out.texCoord.y = 1 - out.texCoord.y;
+    
+    out.color = vertices[vid].color;
     
     return out;
 }
@@ -134,12 +136,12 @@ vertex Vertex finalVertexShader(uint vid [[vertex_id]],
 constant float convMtrx[] = {
     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
     0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
-    0.021938, 0.098320, 0.162103, 0.098320, 0.021938,
+    0.021938, 0.098320, 1, 0.098320, 0.021938,
     0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
 };
 
-fragment float4 finalFragmentShader(Vertex vert [[stage_in]],
+fragment float4 finalFragmentShader(ColorVertex vert [[stage_in]],
                                             texture2d<float> texture [[texture(MTABLS_DIST_TEXTURE_IND)]],
                                     constant float2& screenSize [[buffer(MTABLS_VERTEX_IN__SCREENWIDTH)]] ){
     
@@ -150,17 +152,23 @@ fragment float4 finalFragmentShader(Vertex vert [[stage_in]],
     
     float4 realColor = float4(0,0,0,1);
     
-    float2 pixelCoord = vert.realPos * screenSize;
+    float2 pixelCoord = vert.texCoord * screenSize;
 
-    float2 sum = float2(0,0);
+    float sum = 0;
     for(int i=-2; i <= 2; i++){
         for(int j=-2; j <= 2; j++){
-            sum += texture.sample(simpleSampler, (pixelCoord + float2(i,j)) / screenSize ).gb * convMtrx[((i+2)%5) + (j+2)*5];
+            sum += texture.sample(simpleSampler, (pixelCoord + float2(i,j)) / screenSize ).r * convMtrx[((i+2)%5) + (j+2)*5];
         }
     }
 ////    sum /= (5) * (5);
 //
-    realColor.gb = sum * 2;
+    
+    if(sum > 1){
+        sum = 1;
+    }
+    
+    realColor = vert.color * sum;
+//    return vert.color;
     
 //    realColor = texture.sample(simpleSampler, pixelCoord/screenSize);
 

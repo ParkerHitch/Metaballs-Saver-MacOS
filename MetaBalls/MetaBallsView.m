@@ -209,8 +209,8 @@ float magnitude(vector_float2 vec){
         renderEncoder.label = @"Marching Cubes Render Pass";
         [renderEncoder setRenderPipelineState:_rawBallTexRPipeline];
         
-        [renderEncoder setVertexBytes:&cornerRealTho
-                               length:sizeof(cornerRealTho)
+        [renderEncoder setVertexBytes:&cornerVerts
+                               length:sizeof(cornerVerts)
                               atIndex:MTABLS_VERTEX_IN__VERTECIES];
         
         [renderEncoder setFragmentTexture:_distTexture atIndex:MTABLS_DIST_TEXTURE_IND];
@@ -232,8 +232,8 @@ float magnitude(vector_float2 vec){
         
         [renderEncoder setRenderPipelineState:_drawFinalRPipeline];
         
-        [renderEncoder setVertexBytes:&cornerVerts
-                               length:sizeof(cornerVerts)
+        [renderEncoder setVertexBytes:&cornerRealTho
+                               length:sizeof(cornerRealTho)
                               atIndex:MTABLS_VERTEX_IN__VERTECIES];
         
         [renderEncoder setFragmentTexture:_rawBallTexture atIndex:MTABLS_DIST_TEXTURE_IND];
@@ -349,7 +349,7 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
     MTLTextureDescriptor* rawBallTexDescriptor = [MTLTextureDescriptor new];
     rawBallTexDescriptor.width  = self.frame.size.width*MTABLS_RENDER_SCALE;
     rawBallTexDescriptor.height = self.frame.size.height*MTABLS_RENDER_SCALE;
-    rawBallTexDescriptor.pixelFormat = MTLPixelFormatRGBA16Float;
+    rawBallTexDescriptor.pixelFormat = MTLPixelFormatR16Float;
     rawBallTexDescriptor.usage = MTLTextureUsageRenderTarget |
                           MTLTextureUsageShaderRead;
     _rawBallTexture = [device newTextureWithDescriptor:rawBallTexDescriptor];

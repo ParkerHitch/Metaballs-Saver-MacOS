@@ -150,7 +150,7 @@
 		68A8DC892A0C7B6500551EAF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -197,18 +197,26 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/opt/freetype/lib;
 				MACOSX_DEPLOYMENT_TARGET = 12.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lfreetype\n-lfreetype\n-lfreetype\n-lfreetype",
+				);
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = (
+					/opt/homebrew/opt/libpng/include/libpng16,
+					/opt/homebrew/opt/freetype/include/freetype2,
+				);
 			};
 			name = Debug;
 		};
 		68A8DC8A2A0C7B6500551EAF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -249,10 +257,18 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/opt/freetype/lib;
 				MACOSX_DEPLOYMENT_TARGET = 12.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = (
+					"-lfreetype\n-lfreetype\n-lfreetype\n-lfreetype",
+				);
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = (
+					/opt/homebrew/opt/libpng/include/libpng16,
+					/opt/homebrew/opt/freetype/include/freetype2,
+				);
 			};
 			name = Release;
 		};
