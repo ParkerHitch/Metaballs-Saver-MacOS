@@ -8,6 +8,7 @@
 #import "MetaBallsView.h"
 #import <OSLog/OSLog.h>
 #import "MetaBallConstants.h"
+#import "timeGen.h"
 
 typedef struct {
     vector_float4 position;
@@ -26,6 +27,8 @@ float magnitude(vector_float2 vec){
     MTLRenderPassDescriptor* _renderToDistTexRPassDescriptor;
     id<MTLRenderPipelineState> _renderToDistTexRPipeline;
     
+    id<MTLTexture> _timeDistTexture;
+    
     id<MTLTexture> _rawBallTexture;
     MTLRenderPassDescriptor* _rawBallTexRPassDescriptor;
     id<MTLRenderPipelineState> _rawBallTexRPipeline;
@@ -41,6 +44,12 @@ float magnitude(vector_float2 vec){
     vector_float2 bVels[MTABLS_NUM_BALLS];
     float bVelIdeal[MTABLS_NUM_BALLS];
     vector_float2 bAccel[MTABLS_NUM_BALLS];
+    
+    NSCalendar* _gregorianCal;
+    int _hour;
+    int _minute;
+    timeSDFGenerator* _sdfGen;
+    
 }
 
 - (instancetype)initWithFrame:(NSRect)frame isPreview:(BOOL)isPreview
@@ -54,13 +63,19 @@ float magnitude(vector_float2 vec){
     if (![self initMetal])
         return NULL;
     self.animationTimeInterval = 1.0/60.0;
+ 
+    _gregorianCal = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+    _hour = -1;
+    _minute = -1;
+    
+    _sdfGen = [timeSDFGenerator init: frame.size.height];
     
     _aspectRatio = frame.size.width / frame.size.height;
     _winSize.x = frame.size.width;
     _winSize.y = frame.size.height;
     _renderSize = _winSize*MTABLS_RENDER_SCALE;
     
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     for(int i=0; i < MTABLS_NUM_BALLS; i++){
         float sz = (1.5 - ((float)rand() / RAND_MAX));
         bSizes[i] = _winSize.x * MTABLS_BALL_SIZE * sz;
@@ -139,6 +154,16 @@ float magnitude(vector_float2 vec){
         
         bPositions[i] += bVels[i] * self.animationTimeInterval;
     }
+
+    NSDateComponents *dateComps = [_gregorianCal components: (NSCalendarUnitHour | NSCalendarUnitMinute)
+                                                   fromDate: [NSDate date]];
+    if([dateComps minute] != _minute){
+        _minute = (int) [dateComps minute];
+        _hour = (int) [dateComps hour]%12;
+        _hour = _hour ? _hour : 12;
+        [_sdfGen writeSDF:_timeDistTexture :_hour :_minute];
+    }
+    
     [self drawInMTKView:_mtkview];
     return;
 }
@@ -214,6 +239,7 @@ float magnitude(vector_float2 vec){
                               atIndex:MTABLS_VERTEX_IN__VERTECIES];
         
         [renderEncoder setFragmentTexture:_distTexture atIndex:MTABLS_DIST_TEXTURE_IND];
+        [renderEncoder setFragmentTexture:_timeDistTexture atIndex:MTABLS_TIMEDIST_TEXTURE_IND];
         [renderEncoder setFragmentBytes:&_renderSize
                                length:sizeof(_winSize)
                               atIndex:MTABLS_VERTEX_IN__SCREENWIDTH];
@@ -326,6 +352,30 @@ MSSMakeRenderPipelineState(_Nonnull id<MTLDevice> device,
                           MTLTextureUsageShaderRead;
     
     _distTexture = [device newTextureWithDescriptor:distTexDescriptor];
+    
+    MTLTextureDescriptor* timeDistDesc = [MTLTextureDescriptor new];
+    timeDistDesc.width  = self.frame.size.width*MTABLS_DISTTEX_RENDER_SCALE;
+    timeDistDesc.height = self.frame.size.height*MTABLS_DISTTEX_RENDER_SCALE;
+    timeDistDesc.pixelFormat = MTLPixelFormatR8Uint;
+//    timeDistDesc.usage = MTLTextureUsageShaderRead;
+    
+    _timeDistTexture = [device newTextureWithDescriptor:timeDistDesc];
+    
+//    uint8* testBuff = malloc(50*50);
+//    for(int i=0; i<50*50; i++){
+//        testBuff[i] = 255;
+//    }
+//    
+//    MTLRegion charRegion = {
+//        {0,0,0},
+//        {50,50, 1}
+//    };
+//    [_timeDistTexture replaceRegion:charRegion
+//               mipmapLevel: 0
+//                 withBytes: testBuff
+//               bytesPerRow: 50];
+//    
+//    free(testBuff);
     
     _renderToDistTexRPassDescriptor = [MTLRenderPassDescriptor new];
     _renderToDistTexRPassDescriptor.colorAttachments[0].texture = _distTexture;

@@ -77,12 +77,26 @@ vertex Vertex marchingCubesVertexShader(uint vid [[vertex_id]],
     return out;
 }
 
+float combineDistanceFields(sampler samp,
+                            texture2d<float> texture [[texture(MTABLS_DIST_TEXTURE_IND)]],
+                            texture2d<short> timeDistTex [[texture(MTABLS_TIMEDIST_TEXTURE_IND)]],
+                            float2 coord){
+    float out;
+    out = texture.sample(samp, coord).r;
+    float2 hack = coord;
+    hack.y = 1-hack.y;
+    out += ((MTABLS_BALL_THRESH / 0.5) * ((float)timeDistTex.sample(samp, hack).r)/255.0);
+    return out;
+}
 
 fragment float4 marchingCubesFragmentShader(Vertex vert [[stage_in]],
                                             texture2d<float> texture [[texture(MTABLS_DIST_TEXTURE_IND)]],
+                                            texture2d<short> timeDistTex [[texture(MTABLS_TIMEDIST_TEXTURE_IND)]],
                                             constant float2& screenSize [[buffer(MTABLS_VERTEX_IN__SCREENWIDTH)]] ){
     
-    sampler simpleSampler;
+    sampler simpleSampler(filter::linear,
+                          address::clamp_to_edge,
+                          min_filter::linear);
     float2 baseCoord = (vert.realPos+1) / 2;
     
     float2 pixelCoord = baseCoord * screenSize;
@@ -90,10 +104,15 @@ fragment float4 marchingCubesFragmentShader(Vertex vert [[stage_in]],
     float2 realCoord1 = pixelCoord / (screenSize+1);
     float2 realCoord2 = (pixelCoord+1) / (screenSize+1);
     
-    float c1 = texture.sample(simpleSampler, realCoord1).r;
-    float c2 = texture.sample(simpleSampler, realCoord2).r;
-    float c3 = texture.sample(simpleSampler, float2(realCoord1.x, realCoord2.y)).r;
-    float c4 = texture.sample(simpleSampler, float2(realCoord2.x, realCoord1.y)).r;
+//    float c1 = texture.sample(simpleSampler, realCoord1).r;
+//    float c2 = texture.sample(simpleSampler, realCoord2).r;
+//    float c3 = texture.sample(simpleSampler, float2(realCoord1.x, realCoord2.y)).r;
+//    float c4 = texture.sample(simpleSampler, float2(realCoord2.x, realCoord1.y)).r;
+    
+    float c1 = combineDistanceFields(simpleSampler, texture, timeDistTex, realCoord1);
+    float c2 = combineDistanceFields(simpleSampler, texture, timeDistTex, realCoord2);
+    float c3 = combineDistanceFields(simpleSampler, texture, timeDistTex, float2(realCoord1.x, realCoord2.y));
+    float c4 = combineDistanceFields(simpleSampler, texture, timeDistTex, float2(realCoord2.x, realCoord1.y));
     
     bool c1In = c1 > MTABLS_BALL_THRESH;
     bool c2In = c2 > MTABLS_BALL_THRESH;
@@ -103,7 +122,7 @@ fragment float4 marchingCubesFragmentShader(Vertex vert [[stage_in]],
     bool aboveThresh = c1In || c2In || c3In || c4In;
     bool belowThresh = !c1In || !c2In || !c3In || !c4In;
     
-    float4 realColor = float4(0,0,0,1);
+//    float4 realColor = float4(0,0,0,1);
     
     float multiplier = 0;
     
@@ -113,6 +132,13 @@ fragment float4 marchingCubesFragmentShader(Vertex vert [[stage_in]],
     
 //    realColor.rgb = vert.color.rgb * multiplier;
     
+//    float tempTest = 0;
+//    tempTest += texture.sample(simpleSampler, baseCoord).r;
+//    float2 hack = baseCoord;
+//    hack.y = 1-hack.y;
+//    tempTest += ((MTABLS_BALL_THRESH / 0.5) * ((float)timeDistTex.sample(simpleSampler, hack).r)/255.0);
+//    return vector_float4(tempTest, tempTest, tempTest, 1.0);
+//
     return vector_float4(multiplier, multiplier, multiplier, 1.0);
 }
 
@@ -136,7 +162,7 @@ vertex ColorVertex finalVertexShader(uint vid [[vertex_id]],
 constant float convMtrx[] = {
     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
     0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
-    0.021938, 0.098320, 1, 0.098320, 0.021938,
+    0.021938, 0.098320, 1,        0.098320, 0.021938,
     0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
 };
@@ -149,9 +175,9 @@ fragment float4 finalFragmentShader(ColorVertex vert [[stage_in]],
     
     sampler simpleSampler(coord::normalized,
                           filter::linear);
-    
+
     float4 realColor = float4(0,0,0,1);
-    
+
     float2 pixelCoord = vert.texCoord * screenSize;
 
     float sum = 0;
@@ -162,17 +188,15 @@ fragment float4 finalFragmentShader(ColorVertex vert [[stage_in]],
     }
 ////    sum /= (5) * (5);
 //
-    
+
     if(sum > 1){
         sum = 1;
     }
-    
+
     realColor = vert.color * sum;
-//    return vert.color;
+//    return vert.
     
 //    realColor = texture.sample(simpleSampler, pixelCoord/screenSize);
-
-
     return realColor;
 }
 
