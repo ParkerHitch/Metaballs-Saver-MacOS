@@ -15,7 +15,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#define FONTNAME "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf"
+#define FONTNAME "/System/Library/Fonts/Supplemental/Bangla Sangam MN.ttc"
 
 @implementation timeSDFGenerator {
     FT_Library library;
@@ -34,18 +34,18 @@
     timeSDFGenerator* testOut = [timeSDFGenerator alloc];
     int error = 0;
     error += FT_Init_FreeType(&testOut->library);
-    error += FT_New_Face(testOut->library, FONTNAME, 0, &testOut->face);
+    error += FT_New_Face(testOut->library, FONTNAME, 1, &testOut->face);
     error += FT_Set_Pixel_Sizes(testOut->face, texHeight/2, 0);
     
     testOut->glyph = testOut->face->glyph;
     
-    int colonInd = FT_Get_Char_Index(testOut->face, ':');
+    int centerLetterInd = FT_Get_Char_Index(testOut->face, 'A');
     
-    error += FT_Load_Glyph(testOut->face, colonInd, 0);
-    FT_Glyph_Metrics colonMetrics = testOut->glyph->metrics;
+    error += FT_Load_Glyph(testOut->face, centerLetterInd, 0);
+    FT_Glyph_Metrics centerLetterMetrics = testOut->glyph->metrics;
     
     // + & - inverted because +y is down
-    testOut->baselineY = (texHeight/2) - ((colonMetrics.height>>6)/2) + (colonMetrics.horiBearingY>>6);
+    testOut->baselineY = (texHeight/2) - ((centerLetterMetrics.height>>6)/2) + (centerLetterMetrics.horiBearingY>>6);
 
     
     if(error)
@@ -100,6 +100,11 @@
 
     }
     
+}
+
+-(void) dealloc{
+    FT_Done_Face(face);
+    FT_Done_FreeType(library);
 }
 
 @end
