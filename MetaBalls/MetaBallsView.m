@@ -50,6 +50,7 @@ float magnitude(vector_float2 vec){
     int _minute;
     timeSDFGenerator* _sdfGen;
     
+    bool _isPreview;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame isPreview:(BOOL)isPreview
@@ -67,6 +68,8 @@ float magnitude(vector_float2 vec){
     _gregorianCal = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
     _hour = -1;
     _minute = -1;
+    
+    _isPreview = isPreview;
     
     _sdfGen = [timeSDFGenerator init: frame.size.height];
     
@@ -89,6 +92,14 @@ float magnitude(vector_float2 vec){
         bAccel[i] = 0;
     }
     
+    
+    [NSDistributedNotificationCenter.defaultCenter
+        addObserver: self
+        selector: @selector(willStop)
+               name: @"com.apple.screensaver.willstop"
+             object: nil
+    ];
+    
     return self;
 }
 
@@ -103,6 +114,15 @@ float magnitude(vector_float2 vec){
 - (void)stopAnimation
 {
     [super stopAnimation];
+}
+
+- (void)willStop
+{
+    if (!_isPreview) {
+        // Alternative impl
+        // self.removeFromSuperview()
+        [NSApplication.sharedApplication terminate:nil];
+    }
 }
 
 - (void)drawRect:(NSRect)rect
